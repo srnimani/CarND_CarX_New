@@ -3,6 +3,7 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
+from std_msgs.msg import Int32
 from scipy.spatial import KDTree
 
 import math
@@ -42,9 +43,12 @@ class WaypointUpdater(object):
 
         # DONE: Add other member variables you need below
         self.pose = None
+        self.base_lane = None
+        self.stopline_wp_idx = -1
         self.base_waypoints = None
         self.waypoints_2d = None
         self.waypoint_tree = None
+        self.closest_idx = None
 
         self.loop()
 
@@ -81,16 +85,15 @@ class WaypointUpdater(object):
             closest_idx = (closest_idx + 1) % len(self.waypoints_2d)
         return closest_idx
 
-    def publish_waypoints(self):
-        final_lane = self.generate_lane()
+    def publish_waypoints(self, closest_idx):
+
+        final_lane = self.generate_lane(closest_idx)
         self.final_waypoints_pub.publish(final_lane)
 
-    def generate_lane(self):
+    def generate_lane(self, closest_idx):
         lane = Lane()
-
-        closes_idx = self.get_closest_waypoint_idx()
         farthest_idx = closest_idx + LOOKAHEAD_WPS
-        base_waypoints = self. base_lane.waypoints[closest_idx:farthest_idx]
+        base_waypoints = self.base_lane.waypoints[closest_idx:farthest_idx]
 
         if self.stop_wp_idx == -1 or (self.stopline_wp_idx >= farthest_idx):
             lane.waypoints = base_waypoints
@@ -101,7 +104,7 @@ class WaypointUpdater(object):
 
 
     def decelerate_waypoints(self, waypoints, closest_idx):
-        temp []
+        temp = []
 
         p = Waypoint()
         p.pose = wp.pose
