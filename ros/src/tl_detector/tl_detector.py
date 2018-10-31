@@ -59,6 +59,11 @@ class TLDetector(object):
     def pose_cb(self, msg):
         self.pose = msg
 
+    
+    def waypoints_cb(self, waypoints):
+        self.waypoints = waypoints
+
+    
     def traffic_cb(self, msg):
         self.lights = msg.lights
 
@@ -92,7 +97,7 @@ class TLDetector(object):
             self.upcoming_red_light_pub.publish(Int32(self.last_wp))
         self.state_count += 1
 
-
+"""
     def waypoints_cb(self, waypoints):
         # DONE: Implemented
         self.base_waypoints = waypoints
@@ -101,7 +106,8 @@ class TLDetector(object):
             for waypoint in waypoints.waypoints]
             self.waypoint_tree = KDTree(self.waypoints_2d)
 
-
+"""
+    
     def get_closest_waypoint(self, x, y):
         """Identifies the closest path waypoint to the given position
             https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
@@ -188,8 +194,6 @@ class TLDetector(object):
 
         return -1, TrafficLight.UNKNOWN
 
-
-    
 
 if __name__ == '__main__':
     try:
