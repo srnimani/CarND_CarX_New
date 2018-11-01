@@ -37,9 +37,11 @@ class WaypointUpdater(object):
         self.pose = None
         self.base_lane = None
         self.stopline_wp_idx = -1
+        #self.base_waypoints = None
         self.waypoints_2d = None
         self.waypoint_tree = None
-        
+        #self.closest_idx = None
+
         # Subscribe to the needed messages
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -99,8 +101,7 @@ class WaypointUpdater(object):
         if self.stopline_wp_idx == -1 or (self.stopline_wp_idx >= farthest_idx):
             lane.waypoints = base_waypoints
         else:
-            lane.waypoints = base_waypoints
-            #lane.waypoints = self.decelerate_waypoints(base_waypoints, closest_idx)
+            lane.waypoints = self.decelerate_waypoints(base_waypoints, closest_idx)
 
         return lane
 
