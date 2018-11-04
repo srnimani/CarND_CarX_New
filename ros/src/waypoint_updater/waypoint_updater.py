@@ -91,22 +91,23 @@ class WaypointUpdater(object):
 
     def generate_lane(self):
         lane = Lane()
-
         closest_idx = self.get_closest_waypoint_idx()
         farthest_idx = closest_idx + LOOKAHEAD_WPS
         base_waypoints = self.base_lane.waypoints[closest_idx:farthest_idx]
+        rospy.loginfo("Stopline_wp_idx %s", self.stopline_wp_idx)
 
         if self.stopline_wp_idx == -1 or (self.stopline_wp_idx >= farthest_idx):
             lane.waypoints = base_waypoints
         else:
-            lane.waypoints = base_waypoints
-            #lane.waypoints = self.decelerate_waypoints(base_waypoints, closest_idx)
+            #lane.waypoints = base_waypoints
+            lane.waypoints = self.decelerate_waypoints(base_waypoints, closest_idx)
 
         return lane
 
 
     def decelerate_waypoints(self, waypoints, closest_idx):
         temp = []
+        #rospy.loginfo ("Decelerate routine Entered")
 
         for i, wp in enumerate(waypoints):
             p = Waypoint()
@@ -119,6 +120,7 @@ class WaypointUpdater(object):
                 vel = 0.
 
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
+            #rospy.loginfo("Velocity %s", p.twist.twist.linear.x)
             temp.append(p)
 
         return temp
@@ -158,6 +160,7 @@ class WaypointUpdater(object):
         dist = 0
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
         for i in range(wp1, wp2+1):
+            #rospy.loginfo("i %s wp1 %s wp2 %s", i, wp1, wp2)
             dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
             wp1 = i
         return dist
