@@ -116,9 +116,14 @@ class WaypointUpdater(object):
             p = Waypoint()
             p.pose = wp.pose
 
-            dist = self.wp_distance_vector[i]
-            vel = math.sqrt(2 * MAX_DECEL * dist)
-            if vel <  1.:
+            # Decelerate till stop_idx is reached. Beyond that index set 
+            # veloities to 0
+            if i <=stop_idx:
+                dist = self.wp_distance_vector[i]
+                vel = math.sqrt(2 * MAX_DECEL * dist)
+                if vel <  1.:
+                    vel = 0.
+            else:
                 vel = 0.
 
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
@@ -191,10 +196,10 @@ class WaypointUpdater(object):
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
         dist = 0
         distance_vector = [0]
-        i = stop_idx -1
+        i = stop_idx - 1 
         while i >=0 :
             #rospy.loginfo("i %s wp1 %s wp2 %s", i, wp1, wp2)
-            dist += dl(waypoints[i-1].pose.pose.position, waypoints[i].pose.pose.position)
+            dist += dl(waypoints[i].pose.pose.position, waypoints[i+1].pose.pose.position)
             self.wp_distance_vector.insert(0, dist)
             i -= 1
         return distance_vector
