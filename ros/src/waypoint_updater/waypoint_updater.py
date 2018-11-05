@@ -39,6 +39,8 @@ class WaypointUpdater(object):
         self.stopline_wp_idx = -1
         self.waypoints_2d = None
         self.waypoint_tree = None
+        self.wp_distance_vector = [] # stores the distances between waypoints with respect
+                                     # to the last waypoints
         
         # Subscribe to the needed messages
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
@@ -108,12 +110,32 @@ class WaypointUpdater(object):
     def decelerate_waypoints(self, waypoints, closest_idx):
         temp = []
         #rospy.loginfo ("Decelerate routine Entered")
+        stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0) # Two waypoints back from lane
+        self.wp_distance_vector = wp_distances(waypoints, stop_idx)
+        for i, wp in enumerate(waypoints):
+            p = Waypoint()
+            p.pose = wp.pose
+
+            dist = self.wp_distance_vector[i]
+            vel = math.sqrt(2 * MAX_DECEL * dist)
+            if vel <  1.:
+                vel = 0.
+
+            p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
+            #rospy.loginfo("Velocity %s", p.twist.twist.linear.x)
+            temp.append(p)
+
+        return temp
+
+    def old_decelerate_waypoints(self, waypoints, closest_idx):
+        temp = []
+        #rospy.loginfo ("Decelerate routine Entered")
+        stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0) # Two waypoints back from lane
 
         for i, wp in enumerate(waypoints):
             p = Waypoint()
             p.pose = wp.pose
 
-            stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0) # Two waypoints back from lane
             dist = self.distance(waypoints, i, stop_idx)
             vel = math.sqrt(2 * MAX_DECEL * dist)
             if vel <  1.:
@@ -162,8 +184,20 @@ class WaypointUpdater(object):
         for i in range(wp1, wp2+1):
             #rospy.loginfo("i %s wp1 %s wp2 %s", i, wp1, wp2)
             dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
-            wp1 = i
+            
         return dist
+
+    def wp_distances(self, waypoints, stop_idx):
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+        dist = 0
+        distance_vector = [0]
+        i = stop_idx -1
+        while i >=0 :
+            #rospy.loginfo("i %s wp1 %s wp2 %s", i, wp1, wp2)
+            dist += dl(waypoints[i-1].pose.pose.position, waypoints[i].pose.pose.position)
+            self.wp_distance_vector.insert(0, dist)
+            i -= 1
+        return distance_vector
 
 
 if __name__ == '__main__':
