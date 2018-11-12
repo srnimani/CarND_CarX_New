@@ -119,6 +119,7 @@ class WaypointUpdater(object):
             #rospy.loginfo ("i Value %s", i)
             # Decelerate till stop_idx is reached. Beyond that index set 
             # veloities to 0
+            
             if i <= stop_idx:
                 dist = self.wp_distance_vector[i]
                 vel = math.sqrt(2 * MAX_DECEL * dist)
@@ -126,9 +127,9 @@ class WaypointUpdater(object):
                     vel = 0.
             else:
                 vel = 0.
-
+            
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
-            #rospy.loginfo("Velocity %s", p.twist.twist.linear.x)
+            rospy.loginfo("i  %s Velocity  %s", i, p.twist.twist.linear.x)
             temp.append(p)
 
         return temp

@@ -56,6 +56,9 @@ class Controller(object):
         throttle = self.throttle_controller.step(vel_error, sample_time)
         brake = 0
 
+        deceleration = abs(vel_error / sample_time)
+        """
+
         if linear_vel == 0. and vel_error < 0.1:
         	throttle = 0.
         	brake = 400 # N*m, to hold the car @ light. Acceleration = 1m/sec2
@@ -63,8 +66,16 @@ class Controller(object):
 
         elif linear_vel < 0.1 and vel_error < 0.:
         	throttle = 0.
-        	decel = max(vel_error, self.decel_limit)
+        	decel = max(deceleration, self.decel_limit)
         	brake = abs(decel)*self.vehicle_mass*self.wheel_radius # Torque N*m
+        """
+        if vel_error < 0: # Needs to decelerate
+
+            if deceleration > abs(self.decel_limit):
+                deceleration = abs(self.decel_limit)*500  # Limited to decelartion limits
+            brake = self.vehicle_mass * deceleration * self.wheel_radius
+        else:
+            brake = 0.0
 
         return throttle, brake, steering
 
