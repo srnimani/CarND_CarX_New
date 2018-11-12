@@ -107,7 +107,7 @@ class TLDetector(object):
         # Use of KDTree again to get the closest index
 
         if self.waypoint_tree == None:
-            return 0
+            return -1
 
         closest_idx = self.waypoint_tree.query([x, y], 1)[1]
         return closest_idx
@@ -156,6 +156,9 @@ class TLDetector(object):
         if (self.pose and self.waypoints != None):
             car_wp_idx = self.get_closest_waypoint(self.pose.pose.position.x, self.pose.pose.position.y)
             
+            if car_wp_idx == -1:
+                return -1, TrafficLight.UNKNOWN # Not fully initialized
+
             #DONE find the closest visible traffic light (if one exists)
             diff = len(self.waypoints.waypoints)
             for i, light in enumerate(self.lights):

@@ -50,21 +50,37 @@ class Controller(object):
         self.last_vel = current_vel
 
         current_time = rospy.get_time()
-        sample_time = current_time - self.last_time
+        dt = current_time - self.last_time
         self.last_time = current_time
 
-        throttle = self.throttle_controller.step(vel_error, sample_time)
+        throttle = self.throttle_controller.step(vel_error, dt)
         brake = 0
+
+        """
 
         if linear_vel == 0. and vel_error < 0.1:
         	throttle = 0.
-        	brake = 400 # N*m, to hold the car @ light. Acceleration = 1m/sec2
+        	brake = 700 # N*m, to hold Carla @ light.
 
 
         elif linear_vel < 0.1 and vel_error < 0.:
         	throttle = 0.
         	decel = max(vel_error, self.decel_limit)
         	brake = abs(decel)*self.vehicle_mass*self.wheel_radius # Torque N*m
+
+        """
+        # The following code is if the car needs to slowdown or stop
+
+        if vel_error < 0: # Need to decelerate
+        	needed_deceleration = abs(vel_error)/ dt # deceleration = veleocity change/ time
+        	jerkfree_deceleration = min(needed_deceleration, abs(self.decel_limit))
+        	brake = abs(jerkfree_deceleration) * self.vehicle_mass * self.wheel_radius * 9.81 # Torque in Nm and 1 N = 9.81 Kgm/sec2
+        	throttle = 0.0
+        elif:
+        	linear_vel == 0. and vel_error < 0.1:
+        	brake = 700 # Nm, to hold Carla @ light.
+        	throttle = 0.
+
 
         return throttle, brake, steering
 
