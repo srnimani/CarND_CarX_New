@@ -87,8 +87,9 @@ class WaypointUpdater(object):
 
 
     def publish_waypoints(self):
-        final_lane = self.generate_lane()
-        self.final_waypoints_pub.publish(final_lane)
+        if base_lane != None:
+            final_lane = self.generate_lane()
+            self.final_waypoints_pub.publish(final_lane)
 
 
     def generate_lane(self):
