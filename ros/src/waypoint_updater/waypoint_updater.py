@@ -118,9 +118,10 @@ class WaypointUpdater(object):
             p.pose = wp.pose
             #rospy.loginfo ("i Value %s", i)
             # Decelerate till stop_idx is reached. Beyond that index set 
-            # veloities to 0
+            # velocities to 0
             if i <= stop_idx:
                 dist = self.wp_distance_vector[i]
+                rospy.loginfo("Distance %s", dist)
                 vel = math.sqrt(2 * MAX_DECEL * dist)
                 if vel <  1.:
                     vel = 0.
@@ -128,7 +129,7 @@ class WaypointUpdater(object):
                 vel = 0.
 
             # The following line is for testing, remove it after seeing the car's behavior
-            vel = 0.
+            #vel = 0.
 
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
             #rospy.loginfo("Velocity %s", p.twist.twist.linear.x)

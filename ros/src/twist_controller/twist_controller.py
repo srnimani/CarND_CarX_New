@@ -17,7 +17,7 @@ class Controller(object):
         ki = 0.1
         kd = 0.
         mn = 0. # minimum throttle value
-        mx = 1.0 # maximum throttle value
+        mx = 0.4 # maximum throttle value
         self.throttle_controller = PID(kp, ki, kd, mn, mx)
 
         tau = 0.5 # 1/(2pi*tau) = cut-off frequency
@@ -32,6 +32,7 @@ class Controller(object):
         self.wheel_radius = wheel_radius
 
         self.last_time = rospy.get_time()
+        self.last_vel = 0
 
 
     def control(self, current_vel, dbw_enabled, linear_vel, angular_vel):
@@ -47,10 +48,12 @@ class Controller(object):
         steering = self.yaw_controller.get_steering(linear_vel, angular_vel, current_vel)
 
         vel_error = linear_vel - current_vel
-        self.last_vel = current_vel
 
         current_time = rospy.get_time()
         dt = current_time - self.last_time
+        acceleration = (current_vel- self.last_vel) / dt
+
+        self.last_vel = current_vel
         self.last_time = current_time
 
         throttle = self.throttle_controller.step(vel_error, dt)
@@ -71,16 +74,16 @@ class Controller(object):
         """
         # The following code is if the car needs to slowdown or stop
 
-        if vel_error < 0: # Need to decelerate
-        	needed_deceleration = abs(vel_error)/ dt # deceleration = veleocity change/ time
-        	jerkfree_deceleration = min(needed_deceleration, abs(self.decel_limit))
-        	brake = abs(jerkfree_deceleration) * self.vehicle_mass * self.wheel_radius * 9.81 # Torque in Nm and 1 N = 9.81 Kgm/sec2
-        	throttle = 0.0
-        elif:
-        	linear_vel == 0. and vel_error < 0.1:
+        if vel_error < 0.: # Need to decelerate
+            decel = abs(min(abs(acceleration), abs(self.decel_limit)))
+            brake = decel * self.vehicle_mass * self.wheel_radius
+            #rospy.loginfo("Brake %s", brake)
+            throttle = 0.
+        elif linear_vel == 0. and vel_error < 0.1:
         	brake = 700 # Nm, to hold Carla @ light.
         	throttle = 0.
 
+        #rospy.loginfo("Brake %s", brake)
 
         return throttle, brake, steering
 
