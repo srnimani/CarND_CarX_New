@@ -37,11 +37,11 @@ class WaypointUpdater(object):
         self.pose = None
         self.base_lane = None
         self.stopline_wp_idx = -1
-        #self.base_waypoints = None
         self.waypoints_2d = None
         self.waypoint_tree = None
-        #self.closest_idx = None
-
+        self.wp_distance_vector = [] # stores the distances between waypoints with respect
+                                     # to the last waypoints
+        
         # Subscribe to the needed messages
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -87,20 +87,22 @@ class WaypointUpdater(object):
 
 
     def publish_waypoints(self):
-        final_lane = self.generate_lane()
-        self.final_waypoints_pub.publish(final_lane)
+        if base_lane != None:
+            final_lane = self.generate_lane()
+            self.final_waypoints_pub.publish(final_lane)
 
 
     def generate_lane(self):
         lane = Lane()
-
         closest_idx = self.get_closest_waypoint_idx()
         farthest_idx = closest_idx + LOOKAHEAD_WPS
         base_waypoints = self.base_lane.waypoints[closest_idx:farthest_idx]
+        #rospy.loginfo("Stopline_wp_idx %s", self.stopline_wp_idx)
 
         if self.stopline_wp_idx == -1 or (self.stopline_wp_idx >= farthest_idx):
             lane.waypoints = base_waypoints
         else:
+            #lane.waypoints = base_waypoints
             lane.waypoints = self.decelerate_waypoints(base_waypoints, closest_idx)
 
         return lane
@@ -109,20 +111,37 @@ class WaypointUpdater(object):
     def decelerate_waypoints(self, waypoints, closest_idx):
         temp = []
 
+        stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0) # Two waypoints back from stopline
+
+        # Caculate all incremental distances between waypoints upto stop index
+        self.wp_distance_vector = self.wp_distances(self, waypoints, stop_idx)
+
+        # caluclate the total distance from the current pose till stop_idx    
+        distance_to_stop = sum(self.wp_distance_vector)  
+
+        # Get the current velocity of the car
+        current_velocity = self.get_waypoint_velocity(self, closest_idx) 
+
+        # Calculuate the deceleration needed to stop the car
+        decel_needed = min((current_velocity ** 2 / (2 * distance_to_stop)), MAX_DECEL) # Remember v^2 = u^2 + 2as?
+
         for i, wp in enumerate(waypoints):
             p = Waypoint()
             p.pose = wp.pose
-
-            stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0) # Two waypoints back from lane
-            dist = self.distance(waypoints, i, stop_idx)
-            vel = math.sqrt(2 * MAX_DECEL * dist)
-            if vel <  1.:
+            # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
+            if i < stop_idx:
+                dist_to_next_wp = self.wp_distance_vector[i] # Need to calculate the speed adjustment between every adjacent waypoints
+                vel = math.sqrt(current_velocity ** 2 - 2 * decel_needed * dist_to_next_wp) # same formula v^2 = u^2 + 2as? a is negatibve here
+                if vel <  1.:
+                    vel = 0.
+            else:
                 vel = 0.
 
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
             temp.append(p)
 
         return temp
+
 
     def pose_cb(self, msg):
         # DONE: Implemented
@@ -155,13 +174,14 @@ class WaypointUpdater(object):
         waypoints[waypoint].twist.twist.linear.x = velocity
 
 
-    def distance(self, waypoints, wp1, wp2):
-        dist = 0
+    def wp_distances(self, waypoints, stop_idx):
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
-        for i in range(wp1, wp2+1):
-            dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
-            wp1 = i
-        return dist
+        distance_vector = []
+        for i in range(stop_idx) :
+            dist = dl(waypoints[i].pose.pose.position, waypoints[i+1].pose.pose.position)
+            distance_vector.append(dist)
+        return distance_vector
+
 
 
 if __name__ == '__main__':
