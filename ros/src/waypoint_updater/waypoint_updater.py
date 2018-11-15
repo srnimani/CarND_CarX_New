@@ -112,24 +112,27 @@ class WaypointUpdater(object):
         temp = []
         
         stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0) # Two waypoints back from stopline
-        self.wp_distance_vector = self.wp_distances(waypoints, stop_idx)
+
+        # Calculuate the deceleration needed to stop the car
+        #self.wp_distance_vector = self.wp_distances(waypoints, stop_idx)
+        distance_to_stop = self.stop_distance(waypoints, stop_idx) + calculate the sum of incremental distances
+        current_velocity = self.get_waypoint_velocity(self, closest_idx) 
+        decel_needed = min((current_velocity**2/2 * distance_to_stop), MAX_DECEL) # Remember v^2 = u^2 + 2as?
+
         #rospy.loginfo ("Ditance Vector Length %s", len(self.wp_distance_vector))
         for i, wp in enumerate(waypoints):
             p = Waypoint()
             p.pose = wp.pose
             #rospy.loginfo ("i Value %s", i)
-            # Decelerate till stop_idx is reached. Beyond that index set 
-            # veloities to 0
-            if i <= stop_idx:
-                dist = self.wp_distance_vector[i]
-                vel = math.sqrt(2 * MAX_DECEL * dist)
+            # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
+            if i < stop_idx:
+                dist_to_next_wp = self.distance(waypoints, i, i+1) # Need to calculate the speed adjustment between every adjacent waypoints
+                rospy.loginfo("Distance %s", dist_to_next_wp)
+                vel = math.sqrt(current_velocity**2 + 2 * decel_needed * dist_to_next_wp) # same formula v^2 = u^2 + 2as?
                 if vel <  1.:
                     vel = 0.
             else:
                 vel = 0.
-
-            # The following line is for testing, remove it after seeing the car's behavior
-            vel = 0.
 
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
             #rospy.loginfo("Velocity %s", p.twist.twist.linear.x)
@@ -210,6 +213,15 @@ class WaypointUpdater(object):
             i -= 1
         return distance_vector
 
+
+    def stop_distance(self, waypoints, stop_idx): # Do a piece-wise sum of all waypoints distances
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+        dist = 0
+        i = stop_idx - 1 
+        while i >=0 :
+            dist += dl(waypoints[i].pose.pose.position, waypoints[i+1].pose.pose.position)
+            i -= 1
+        return dist
 
 if __name__ == '__main__':
     try:
