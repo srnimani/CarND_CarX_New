@@ -119,14 +119,15 @@ class WaypointUpdater(object):
         # caluclate the total distance from the current pose till stop_idx    
         distance_to_stop = sum(self.wp_distance_vector)  
 
-        # Calculuate the deceleration needed to stop the car
+        # Get the current velocity of the car
         current_velocity = self.get_waypoint_velocity(self, closest_idx) 
+
+        # Calculuate the deceleration needed to stop the car
         decel_needed = min((current_velocity ** 2 / (2 * distance_to_stop)), MAX_DECEL) # Remember v^2 = u^2 + 2as?
 
         for i, wp in enumerate(waypoints):
             p = Waypoint()
             p.pose = wp.pose
-            #rospy.loginfo ("i Value %s", i)
             # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
             if i < stop_idx:
                 dist_to_next_wp = self.wp_distance_vector[i] # Need to calculate the speed adjustment between every adjacent waypoints
@@ -173,34 +174,14 @@ class WaypointUpdater(object):
         waypoints[waypoint].twist.twist.linear.x = velocity
 
 
-    def distance(self, waypoints, wp1, wp2):
-        dist = 0
-        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
-        for i in range(wp1, wp2+1):
-            #rospy.loginfo("i %s wp1 %s wp2 %s", i, wp1, wp2)
-            dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
-            
-        return dist
-
-
     def wp_distances(self, waypoints, stop_idx):
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
         distance_vector = []
-        #rospy.loginfo ("index Value %s", i)
-        for i in range(stop_idx-1) :
+        for i in range(stop_idx) :
             dist = dl(waypoints[i].pose.pose.position, waypoints[i+1].pose.pose.position)
             distance_vector.append(dist)
         return distance_vector
 
-
-    def stop_distance(self, waypoints, stop_idx): # Do a piece-wise sum of all waypoints distances
-        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
-        dist = 0
-        i = stop_idx - 1 
-        while i >=0 :
-            dist += dl(waypoints[i].pose.pose.position, waypoints[i+1].pose.pose.position)
-            i -= 1
-        return dist
 
 
 if __name__ == '__main__':
