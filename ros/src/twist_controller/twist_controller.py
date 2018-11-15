@@ -27,7 +27,7 @@ class Controller(object):
         self.vehicle_mass = vehicle_mass
         self.fuel_capacity = fuel_capacity
         self.brake_deadband = brake_deadband
-        self.decel_limit = decel_limit
+        self.decel_limit = abs(decel_limit) # Lets use the absolute value to simplify feature equations
         self.accel_limit = accel_limit
         self.wheel_radius = wheel_radius
 
@@ -51,7 +51,11 @@ class Controller(object):
 
         current_time = rospy.get_time()
         dt = current_time - self.last_time
+<<<<<<< HEAD
         acceleration = (current_vel- self.last_vel) / dt
+=======
+        acceleration = (current_vel- self.last_vel) / dt # Current acceleration/ deceleration
+>>>>>>> 46738eefe88775d714775145c1d7c97386958396
 
         self.last_vel = current_vel
         self.last_time = current_time
@@ -75,12 +79,22 @@ class Controller(object):
         # The following code is if the car needs to slowdown or stop
 
         if vel_error < 0.: # Need to decelerate
+<<<<<<< HEAD
             decel = abs(min(abs(acceleration), abs(self.decel_limit)))
             brake = decel * self.vehicle_mass * self.wheel_radius
             #rospy.loginfo("Brake %s", brake)
             throttle = 0.
         elif linear_vel == 0. and vel_error < 0.1:
         	brake = 700 # Nm, to hold Carla @ light.
+=======
+            deceleration = abs(acceleration) # Take the absolute value
+            jerkfree_deceleration = min(deceleration, self.decel_limit)
+            brake = jerkfree_deceleration * self.vehicle_mass * self.wheel_radius
+            #rospy.loginfo("Brake %s", brake)
+            throttle = 0.
+        elif linear_vel == 0. and vel_error < 0.1:
+        	brake = 700 # Nm, minimum breakforce needed to hold Carla @ light.
+>>>>>>> 46738eefe88775d714775145c1d7c97386958396
         	throttle = 0.
 
         #rospy.loginfo("Brake %s", brake)
