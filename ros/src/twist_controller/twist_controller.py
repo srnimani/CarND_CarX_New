@@ -52,12 +52,14 @@ class Controller(object):
         current_time = rospy.get_time()
         dt = current_time - self.last_time
         acceleration = (current_vel- self.last_vel) / dt # Current acceleration/ deceleration
-
+        
         self.last_vel = current_vel
         self.last_time = current_time
 
         throttle = self.throttle_controller.step(vel_error, dt)
         brake = 0
+
+
 
         """
 
@@ -82,6 +84,7 @@ class Controller(object):
             throttle = 0.
         elif linear_vel == 0. and vel_error < 0.1:
         	brake = 700 # Nm, minimum breakforce needed to hold Carla @ light.
+
         	throttle = 0.
 
         #rospy.loginfo("Brake %s", brake)
