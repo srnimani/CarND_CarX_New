@@ -11,9 +11,8 @@ from scipy.spatial import KDTree
 import tf
 import cv2
 import yaml
-import numpy as np
 
-STATE_COUNT_THRESHOLD = 2
+STATE_COUNT_THRESHOLD = 3
 
 class TLDetector(object):
     def __init__(self):
@@ -51,6 +50,7 @@ class TLDetector(object):
         self.last_wp = -1
         self.state_count = 0
 
+        self.base_waypoints = None
         self.waypoints_2d = None
         self.waypoint_tree = None
 
@@ -68,6 +68,10 @@ class TLDetector(object):
             for waypoint in waypoints.waypoints]
             self.waypoint_tree = KDTree(self.waypoints_2d)
 
+    """
+    def waypoints_cb(self, waypoints):
+        self.waypoints = waypoints
+"""
     
     def traffic_cb(self, msg):
         self.lights = msg.lights
@@ -104,15 +108,24 @@ class TLDetector(object):
 
 
     def get_closest_waypoint(self, x, y):
-        # Use of KDTree again to get the closest index
+        """Identifies the closest path waypoint to the given position
+            https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
+        Args:
+            pose (Pose): position to match a waypoint to
 
+        Returns:
+            int: index of the closest waypoint in self.waypoints
+        """
+        
+        #TODO implement
+        
         if self.waypoint_tree == None:
-            return -1
+            return 0
 
         closest_idx = self.waypoint_tree.query([x, y], 1)[1]
         return closest_idx
+    
 
- 
     def get_light_state(self, light):
         """Determines the current color of the traffic light
 
@@ -156,9 +169,6 @@ class TLDetector(object):
         if (self.pose and self.waypoints != None):
             car_wp_idx = self.get_closest_waypoint(self.pose.pose.position.x, self.pose.pose.position.y)
             
-            if car_wp_idx == -1:
-                return -1, TrafficLight.UNKNOWN # Not fully initialized
-
             #DONE find the closest visible traffic light (if one exists)
             diff = len(self.waypoints.waypoints)
             for i, light in enumerate(self.lights):
@@ -174,7 +184,6 @@ class TLDetector(object):
 
         if closest_light:
             state = self.get_light_state(closest_light)
-            #rospy.loginfo("Closest light %s and state %s", line_wp_idx, state)
             return line_wp_idx, state
 
         return -1, TrafficLight.UNKNOWN

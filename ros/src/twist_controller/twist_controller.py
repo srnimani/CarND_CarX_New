@@ -17,7 +17,7 @@ class Controller(object):
         ki = 0.1
         kd = 0.
         mn = 0. # minimum throttle value
-        mx = 0.8 # maximum throttle value
+        mx = 0.4 # maximum throttle value
         self.throttle_controller = PID(kp, ki, kd, mn, mx)
 
         tau = 0.5 # 1/(2pi*tau) = cut-off frequency
@@ -32,6 +32,7 @@ class Controller(object):
         self.wheel_radius = wheel_radius
 
         self.last_time = rospy.get_time()
+        self.last_vel = 0
 
 
     def control(self, current_vel, dbw_enabled, linear_vel, angular_vel):
@@ -47,24 +48,46 @@ class Controller(object):
         steering = self.yaw_controller.get_steering(linear_vel, angular_vel, current_vel)
 
         vel_error = linear_vel - current_vel
-        self.last_vel = current_vel
 
         current_time = rospy.get_time()
-        sample_time = current_time - self.last_time
+        dt = current_time - self.last_time
+        acceleration = (current_vel- self.last_vel) / dt
+
+        self.last_vel = current_vel
         self.last_time = current_time
 
-        throttle = self.throttle_controller.step(vel_error, sample_time)
+        throttle = self.throttle_controller.step(vel_error, dt)
         brake = 0
+
+
+
+        """
 
         if linear_vel == 0. and vel_error < 0.1:
         	throttle = 0.
-        	brake = 400 # N*m, to hold the car @ light. Acceleration = 1m/sec2
+        	brake = 700 # N*m, to hold Carla @ light.
 
 
         elif linear_vel < 0.1 and vel_error < 0.:
         	throttle = 0.
         	decel = max(vel_error, self.decel_limit)
         	brake = abs(decel)*self.vehicle_mass*self.wheel_radius # Torque N*m
+
+        """
+        # The following code is if the car needs to slowdown or stop
+
+        if vel_error < 0.: # Need to decelerate
+            #rospy.loginfo("Error %s", vel_error)
+            decel = abs(min(abs(acceleration), abs(self.decel_limit)))
+            brake = decel * self.vehicle_mass * self.wheel_radius
+            #brake = 100 * self.vehicle_mass * self.wheel_radius * 10
+            #rospy.loginfo("Brake %s", brake)
+            throttle = 0.
+        elif linear_vel == 0. and vel_error < 0.1:
+        	brake = 700 # Nm, to hold Carla @ light.
+        	throttle = 0.
+
+        #rospy.loginfo("Brake %s", brake)
 
         return throttle, brake, steering
 
