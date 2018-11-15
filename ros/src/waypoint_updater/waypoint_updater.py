@@ -146,6 +146,7 @@ class WaypointUpdater(object):
                 vel = 0.
 
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
+            rospy.loginfo("vel  %s", p.twist.twist.linear.x)
             temp.append(p)
 
         return temp
