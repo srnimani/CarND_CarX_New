@@ -59,6 +59,8 @@ class Controller(object):
         throttle = self.throttle_controller.step(vel_error, dt)
         brake = 0
 
+
+
         """
 
         if linear_vel == 0. and vel_error < 0.1:
@@ -75,8 +77,10 @@ class Controller(object):
         # The following code is if the car needs to slowdown or stop
 
         if vel_error < 0.: # Need to decelerate
+            #rospy.loginfo("Error %s", vel_error)
             decel = abs(min(abs(acceleration), abs(self.decel_limit)))
             brake = decel * self.vehicle_mass * self.wheel_radius
+            #brake = 100 * self.vehicle_mass * self.wheel_radius * 10
             #rospy.loginfo("Brake %s", brake)
             throttle = 0.
         elif linear_vel == 0. and vel_error < 0.1:

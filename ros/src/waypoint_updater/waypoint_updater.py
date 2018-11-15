@@ -107,7 +107,7 @@ class WaypointUpdater(object):
         return lane
 
 
-    def decelerate_waypoints(self, waypoints, closest_idx):
+    def test_decelerate_waypoints(self, waypoints, closest_idx):
         temp = []
         
         stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0) # Two waypoints back from stopline
@@ -130,17 +130,18 @@ class WaypointUpdater(object):
 
             # The following line is for testing, remove it after seeing the car's behavior
             #vel = 0.
-
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
-            #rospy.loginfo("Velocity %s", p.twist.twist.linear.x)
+
+            #p.twist.twist.linear.x = vel
+            rospy.loginfo("Velocity %s", vel)
             temp.append(p)
 
         return temp
 
-    def old_decelerate_waypoints(self, waypoints, closest_idx):
+    def decelerate_waypoints(self, waypoints, closest_idx):
         temp = []
         #rospy.loginfo ("Decelerate routine Entered")
-        stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0) # Two waypoints back from lane
+        stop_idx = max(self.stopline_wp_idx - closest_idx - 5, 0) # Two waypoints back from lane
 
         for i, wp in enumerate(waypoints):
             p = Waypoint()
