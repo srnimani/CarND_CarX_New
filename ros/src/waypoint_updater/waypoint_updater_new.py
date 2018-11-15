@@ -110,55 +110,37 @@ class WaypointUpdater(object):
 
     def decelerate_waypoints(self, waypoints, closest_idx):
         temp = []
-        
+
         stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0) # Two waypoints back from stopline
 
-        # Calculuate the deceleration needed to stop the car
-        #self.wp_distance_vector = self.wp_distances(waypoints, stop_idx)
-        distance_to_stop = self.stop_distance(waypoints, stop_idx) # calculate the sum of incremental distances
-        current_velocity = self.get_waypoint_velocity(self, closest_idx) 
-        decel_needed = min((current_velocity**2/(2 * distance_to_stop)), MAX_DECEL) # Remember v^2 = u^2 + 2as?
+        # Caculate all incremental distances between waypoints upto stop index
+        self.wp_distance_vector = self.wp_distances(self, waypoints, stop_idx)
 
-        #rospy.loginfo ("Ditance Vector Length %s", len(self.wp_distance_vector))
+        # caluclate the total distance from the current pose till stop_idx    
+        distance_to_stop = sum(self.wp_distance_vector)  
+
+        # Calculuate the deceleration needed to stop the car
+        current_velocity = self.get_waypoint_velocity(self, closest_idx) 
+        decel_needed = min((current_velocity ** 2 / (2 * distance_to_stop)), MAX_DECEL) # Remember v^2 = u^2 + 2as?
+
         for i, wp in enumerate(waypoints):
             p = Waypoint()
             p.pose = wp.pose
             #rospy.loginfo ("i Value %s", i)
             # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
             if i < stop_idx:
-                dist_to_next_wp = self.distance(waypoints, i, i+1) # Need to calculate the speed adjustment between every adjacent waypoints
-                rospy.loginfo("Distance %s", dist_to_next_wp)
-                vel = math.sqrt(current_velocity**2 - 2 * decel_needed * dist_to_next_wp) # same formula v^2 = u^2 + 2as?
+                dist_to_next_wp = self.wp_distance_vector[i] # Need to calculate the speed adjustment between every adjacent waypoints
+                vel = math.sqrt(current_velocity ** 2 - 2 * decel_needed * dist_to_next_wp) # same formula v^2 = u^2 + 2as? a is negatibve here
                 if vel <  1.:
                     vel = 0.
             else:
                 vel = 0.
 
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
-            #rospy.loginfo("Velocity %s", p.twist.twist.linear.x)
             temp.append(p)
 
         return temp
 
-    def old_decelerate_waypoints(self, waypoints, closest_idx):
-        temp = []
-        #rospy.loginfo ("Decelerate routine Entered")
-        stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0) # Two waypoints back from lane
-
-        for i, wp in enumerate(waypoints):
-            p = Waypoint()
-            p.pose = wp.pose
-
-            dist = self.distance(waypoints, i, stop_idx)
-            vel = math.sqrt(2 * MAX_DECEL * dist)
-            if vel <  1.:
-                vel = 0.
-
-            p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
-            #rospy.loginfo("Velocity %s", p.twist.twist.linear.x)
-            temp.append(p)
-
-        return temp
 
     def pose_cb(self, msg):
         # DONE: Implemented
@@ -200,17 +182,14 @@ class WaypointUpdater(object):
             
         return dist
 
+
     def wp_distances(self, waypoints, stop_idx):
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
-        dist = 0
-        distance_vector = [0]
-        i = stop_idx - 1 
+        distance_vector = []
         #rospy.loginfo ("index Value %s", i)
-        while i >=0 :
-            #rospy.loginfo("i %s wp1 %s wp2 %s", i, wp1, wp2)
-            dist += dl(waypoints[i].pose.pose.position, waypoints[i+1].pose.pose.position)
-            distance_vector.insert(0, dist)
-            i -= 1
+        for i in range(stop_idx-1) :
+            dist = dl(waypoints[i].pose.pose.position, waypoints[i+1].pose.pose.position)
+            distance_vector.append(dist)
         return distance_vector
 
 
@@ -222,7 +201,7 @@ class WaypointUpdater(object):
             dist += dl(waypoints[i].pose.pose.position, waypoints[i+1].pose.pose.position)
             i -= 1
         return dist
-        
+
 
 if __name__ == '__main__':
     try:
