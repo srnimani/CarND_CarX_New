@@ -125,6 +125,9 @@ class WaypointUpdater(object):
         current_velocity = waypoints[0].twist.twist.linear.x
         decel_needed =  5
 
+        rospy.loginfo("Current_vel  %s", current_velocity)
+
+
         # Calculuate the deceleration needed to stop the car
         #decel_needed = min((current_velocity ** 2 / (2 * distance_to_stop)), MAX_DECEL) # Remember v^2 = u^2 + 2as?
 
@@ -137,13 +140,15 @@ class WaypointUpdater(object):
                 rospy.loginfo("distance_to_next wp  %s", dist_to_next_wp)
                 if current_velocity ** 2 >= 2 * decel_needed * dist_to_next_wp:
                     vel = math.sqrt(current_velocity ** 2 - 2 * decel_needed * dist_to_next_wp) # same formula v^2 = u^2 + 2as? a is negatibve here
-                    current_velocity = vel
                 else:
                     vel = 0
                 if vel <  1.:
                     vel = 0.
+                current_velocity = vel
             else:
                 vel = 0.
+
+            vel = 0.
 
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
             rospy.loginfo("vel  %s", p.twist.twist.linear.x)
