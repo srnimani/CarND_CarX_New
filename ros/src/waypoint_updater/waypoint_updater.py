@@ -8,6 +8,7 @@ from scipy.spatial import KDTree
 
 import math
 import numpy as np
+import copy
 
 
 '''
@@ -108,7 +109,8 @@ class WaypointUpdater(object):
         return lane
 
 
-    def decelerate_waypoints(self, waypoints, closest_idx):
+
+    def O_decelerate_waypoints(self, waypoints, closest_idx):
         temp = []
 
         stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0) # Two waypoints back from stopline
@@ -137,24 +139,69 @@ class WaypointUpdater(object):
             # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
             if i < stop_idx:
                 dist_to_next_wp = self.wp_distance_vector[i] # Need to calculate the speed adjustment between every adjacent waypoints
+                new_vel2 = math.pow(current_velocity, 2) - 2 * decel_needed * dist_to_next_wp
                 rospy.loginfo("distance_to_next wp  %s", dist_to_next_wp)
-                if current_velocity ** 2 >= 2 * decel_needed * dist_to_next_wp:
-                    vel = math.sqrt(current_velocity ** 2 - 2 * decel_needed * dist_to_next_wp) # same formula v^2 = u^2 + 2as? a is negatibve here
+                if new_vel2 > 0:
+                    vel = math.sqrt(new_vel2)
                 else:
                     vel = 0
-                if vel <  1.:
-                    vel = 0.
                 current_velocity = vel
             else:
                 vel = 0.
 
-            vel = 0.
+            #vel = 0.
 
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
             rospy.loginfo("vel  %s", p.twist.twist.linear.x)
             temp.append(p)
 
         return temp
+
+
+
+    def decelerate_waypoints(self, waypoints, closest_idx):
+        # make a copy of the waypoints.. need to adjust some velocities to 0
+        decelerate_wps = copy.deepcopy(waypoints) 
+
+        # Calculate the stop waypoint.. it's 2 points from the stopline to ensure that the car's nose is in
+        stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0)
+
+        # Caculate all incremental distances between waypoints upto stop index
+        self.wp_distance_vector = self.wp_distances(decelerate_wps, stop_idx)
+
+        # caluclate the total distance from the current pose till stop_idx    
+        distance_to_stop = sum(self.wp_distance_vector)  
+        rospy.loginfo("distance_to_stop  %s", distance_to_stop)
+
+        # Get the current velocity of the car
+        
+        current_velocity = decelerate_wps[0].twist.twist.linear.x
+        decel_needed =  5
+
+        rospy.loginfo("Current_vel  %s", current_velocity)
+
+        # Calculuate the deceleration needed to stop the car
+        #decel_needed = min((current_velocity ** 2 / (2 * distance_to_stop)), MAX_DECEL) # Remember v^2 = u^2 + 2as?
+
+        for i in range(len(decelerate_wps)):
+            # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
+            if i < stop_idx:
+                dist_to_next_wp = self.wp_distance_vector[i] # Need to calculate the speed adjustment between every adjacent waypoints
+                rospy.loginfo("distance_to_next wp  %s", dist_to_next_wp)
+                new_vel2 = math.pow(current_velocity, 2) - 2 * decel_needed * dist_to_next_wp      
+                if new_vel2 > 0:
+                    vel = math.sqrt(new_vel2)
+                else:
+                    vel = 0
+                current_velocity = vel
+            else:
+                vel = 0.
+
+            decelerate_wps[i].twist.twist.linear.x = vel
+            rospy.loginfo("New velocity  %s", vel)
+
+        return decelerate_wps
+
 
 
     def pose_cb(self, msg):
