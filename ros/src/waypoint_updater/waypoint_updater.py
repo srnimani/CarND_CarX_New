@@ -169,31 +169,18 @@ class WaypointUpdater(object):
         # Caculate all incremental distances between waypoints upto stop index
         self.wp_distance_vector = self.wp_distances(decelerate_wps, stop_idx)
 
-        # caluclate the total distance from the current pose till stop_idx    
-        distance_to_stop = sum(self.wp_distance_vector)  
-        rospy.loginfo("distance_to_stop  %s", distance_to_stop)
-
-        # Get the current velocity of the car
-        
-        current_velocity = decelerate_wps[0].twist.twist.linear.x
-        decel_needed =  5
-
-        rospy.loginfo("Current_vel  %s", current_velocity)
-
         # Calculuate the deceleration needed to stop the car
         #decel_needed = min((current_velocity ** 2 / (2 * distance_to_stop)), MAX_DECEL) # Remember v^2 = u^2 + 2as?
 
         for i in range(len(decelerate_wps)):
             # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
             if i < stop_idx:
-                dist_to_next_wp = self.wp_distance_vector[i] # Need to calculate the speed adjustment between every adjacent waypoints
-                rospy.loginfo("distance_to_next wp  %s", dist_to_next_wp)
-                new_vel2 = math.pow(current_velocity, 2) - 2 * decel_needed * dist_to_next_wp      
-                if new_vel2 > 0:
-                    vel = math.sqrt(new_vel2)
-                else:
-                    vel = 0
-                current_velocity = vel
+                # caluclate the distance to stop from current waypoint till stop_idx    
+                distance_to_stop = sum(self.wp_distance_vector[i:stop_idx])  
+                rospy.loginfo("distance_to_stop  %s", distance_to_stop)
+                vel = math.sqrt(2 * MAX_DECEL * distance_to_stop)     
+                if vel < 1.0:
+                    vel = 0.
             else:
                 vel = 0.
 
