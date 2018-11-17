@@ -27,7 +27,7 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
-MAX_DECEL = 5 # in m/ sec ^2
+MAX_DECEL = 8 # in m/ sec ^2
 
 
 class WaypointUpdater(object):
@@ -109,75 +109,23 @@ class WaypointUpdater(object):
         return lane
 
 
-
-    def O_decelerate_waypoints(self, waypoints, closest_idx):
-        temp = []
-
-        stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0) # Two waypoints back from stopline
-
-        # Caculate all incremental distances between waypoints upto stop index
-        self.wp_distance_vector = self.wp_distances(waypoints, stop_idx)
-
-        # caluclate the total distance from the current pose till stop_idx    
-        distance_to_stop = sum(self.wp_distance_vector)  
-        rospy.loginfo("distance_to_stop  %s", distance_to_stop)
-
-        # Get the current velocity of the car
-        
-        current_velocity = waypoints[0].twist.twist.linear.x
-        decel_needed =  5
-
-        rospy.loginfo("Current_vel  %s", current_velocity)
-
-
-        # Calculuate the deceleration needed to stop the car
-        #decel_needed = min((current_velocity ** 2 / (2 * distance_to_stop)), MAX_DECEL) # Remember v^2 = u^2 + 2as?
-
-        for i, wp in enumerate(waypoints):
-            p = Waypoint()
-            p.pose = wp.pose
-            # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
-            if i < stop_idx:
-                dist_to_next_wp = self.wp_distance_vector[i] # Need to calculate the speed adjustment between every adjacent waypoints
-                new_vel2 = math.pow(current_velocity, 2) - 2 * decel_needed * dist_to_next_wp
-                rospy.loginfo("distance_to_next wp  %s", dist_to_next_wp)
-                if new_vel2 > 0:
-                    vel = math.sqrt(new_vel2)
-                else:
-                    vel = 0
-                current_velocity = vel
-            else:
-                vel = 0.
-
-            #vel = 0.
-
-            p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
-            rospy.loginfo("vel  %s", p.twist.twist.linear.x)
-            temp.append(p)
-
-        return temp
-
-
-
+    
     def decelerate_waypoints(self, waypoints, closest_idx):
         # make a copy of the waypoints.. need to adjust some velocities to 0
         decelerate_wps = copy.deepcopy(waypoints) 
 
         # Calculate the stop waypoint.. it's 2 points from the stopline to ensure that the car's nose is in
-        stop_idx = max(self.stopline_wp_idx - closest_idx - 2, 0)
+        stop_idx = max(self.stopline_wp_idx - closest_idx - 5, 0)
 
         # Caculate all incremental distances between waypoints upto stop index
         self.wp_distance_vector = self.wp_distances(decelerate_wps, stop_idx)
-
-        # Calculuate the deceleration needed to stop the car
-        #decel_needed = min((current_velocity ** 2 / (2 * distance_to_stop)), MAX_DECEL) # Remember v^2 = u^2 + 2as?
 
         for i in range(len(decelerate_wps)):
             # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
             if i < stop_idx:
                 # caluclate the distance to stop from current waypoint till stop_idx    
-                distance_to_stop = sum(self.wp_distance_vector[i:stop_idx])  
-                rospy.loginfo("distance_to_stop  %s", distance_to_stop)
+                distance_to_stop = self.wp_distance_vector[i] 
+                #rospy.loginfo("distance_to_stop  %s", distance_to_stop)
                 vel = math.sqrt(2 * MAX_DECEL * distance_to_stop)     
                 if vel < 1.0:
                     vel = 0.
@@ -185,7 +133,7 @@ class WaypointUpdater(object):
                 vel = 0.
 
             decelerate_wps[i].twist.twist.linear.x = vel
-            rospy.loginfo("New velocity  %s", vel)
+            #rospy.loginfo("New velocity  %s", vel)
 
         return decelerate_wps
 
@@ -222,12 +170,26 @@ class WaypointUpdater(object):
         waypoints[waypoint].twist.twist.linear.x = velocity
 
 
-    def wp_distances(self, waypoints, stop_idx):
+    def owp_distances(self, waypoints, stop_idx):
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
         distance_vector = []
         for i in range(stop_idx) :
             dist = dl(waypoints[i].pose.pose.position, waypoints[i+1].pose.pose.position)
             distance_vector.append(dist)
+        return distance_vector
+
+
+    def wp_distances(self, waypoints, stop_idx):
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+        dist = 0
+        distance_vector = [0]
+        i = stop_idx - 1 
+        #rospy.loginfo ("index Value %s", i)
+        while i >=0 :
+            #rospy.loginfo("i %s wp1 %s wp2 %s", i, wp1, wp2)
+            dist += dl(waypoints[i].pose.pose.position, waypoints[i+1].pose.pose.position)
+            distance_vector.insert(0, dist)
+            i -= 1
         return distance_vector
 
 
