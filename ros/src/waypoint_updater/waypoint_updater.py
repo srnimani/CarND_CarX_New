@@ -99,17 +99,16 @@ class WaypointUpdater(object):
         farthest_idx = closest_idx + LOOKAHEAD_WPS
         base_waypoints = self.base_lane.waypoints[closest_idx:farthest_idx]
         #rospy.loginfo("Stopline_wp_idx %s", self.stopline_wp_idx)
-
+        
         if self.stopline_wp_idx == -1 or (self.stopline_wp_idx >= farthest_idx):
             lane.waypoints = base_waypoints
-        else:
+        else: 
             #lane.waypoints = base_waypoints
             lane.waypoints = self.decelerate_waypoints(base_waypoints, closest_idx)
 
         return lane
 
 
-    
     def decelerate_waypoints(self, waypoints, closest_idx):
         # make a copy of the waypoints.. need to adjust some velocities to 0
         decelerate_wps = copy.deepcopy(waypoints) 
@@ -132,7 +131,7 @@ class WaypointUpdater(object):
 
         return decelerate_wps
 
-
+    
 
     def pose_cb(self, msg):
         # DONE: Implemented
@@ -165,15 +164,6 @@ class WaypointUpdater(object):
         waypoints[waypoint].twist.twist.linear.x = velocity
 
 
-    def owp_distances(self, waypoints, stop_idx):
-        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
-        distance_vector = []
-        for i in range(stop_idx) :
-            dist = dl(waypoints[i].pose.pose.position, waypoints[i+1].pose.pose.position)
-            distance_vector.append(dist)
-        return distance_vector
-
-
     def distance(self, waypoints, wp1, wp2):
         dist = 0
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
@@ -186,12 +176,14 @@ class WaypointUpdater(object):
     def wp_distance(self, waypoints, stop_idx):
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
         dist = 0
-        distance_vector = [0]
-        i = stop_idx - 1 
-        while i >= 0 :
-            dist += dl(waypoints[i].pose.pose.position, waypoints[i+1].pose.pose.position)
+        distance_vector = []
+        i = stop_idx 
+        
+        while i > 0 :
+            dist += dl(waypoints[i].pose.pose.position, waypoints[i-1].pose.pose.position)
             distance_vector.insert(0, dist)
             i -= 1
+
         return distance_vector
 
 
