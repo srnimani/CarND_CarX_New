@@ -117,6 +117,7 @@ class WaypointUpdater(object):
         self.wp_distance_vector = self.wp_distance(decelerate_wps, stop_idx)
 
         for i, wp in enumerate(decelerate_wps):
+
             # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
             if i < stop_idx:
                 #dist = self.distance(decelerate_wps, i, stop_idx)
@@ -130,7 +131,6 @@ class WaypointUpdater(object):
             wp.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
 
         return decelerate_wps
-
     
 
     def pose_cb(self, msg):
