@@ -17,7 +17,7 @@ class Controller(object):
         ki = 0.1
         kd = 0.
         mn = 0. # minimum throttle value
-        mx = 0.4 # maximum throttle value
+        mx = 0.5 # maximum throttle value
         self.throttle_controller = PID(kp, ki, kd, mn, mx)
 
         tau = 0.5 # 1/(2pi*tau) = cut-off frequency
@@ -51,6 +51,7 @@ class Controller(object):
 
         current_time = rospy.get_time()
         dt = current_time - self.last_time
+
         acceleration = (current_vel- self.last_vel) / dt # Current acceleration/ deceleration
         
         self.last_vel = current_vel
