@@ -103,13 +103,12 @@ class WaypointUpdater(object):
         if self.stopline_wp_idx == -1 or (self.stopline_wp_idx >= farthest_idx):
             lane.waypoints = base_waypoints
         else: 
-            #lane.waypoints = base_waypoints
             lane.waypoints = self.decelerate_waypoints(base_waypoints, closest_idx)
 
         return lane
 
 
-    def decelerate_waypoints(self, waypoints, closest_idx):
+    def old_decelerate_waypoints(self, waypoints, closest_idx):
         # make a copy of the waypoints.. need to adjust some velocities to 0
         decelerate_wps = copy.deepcopy(waypoints) 
         # Calculate the stop waypoint.. it's 5 points from the stopline to ensure that the car's nose is in
@@ -131,7 +130,28 @@ class WaypointUpdater(object):
             wp.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
 
         return decelerate_wps
+
     
+    def decelerate_waypoints(self, waypoints, closest_idx):
+        # make a copy of the waypoints.. need to adjust some velocities to 0
+        decelerate_wps = copy.deepcopy(waypoints) 
+        # Calculate the stop waypoint.. it's 3 points from the stopline to ensure that the car's nose is in
+        stop_idx = max(self.stopline_wp_idx - closest_idx - 3, 0)
+        self.wp_distance_vector = self.wp_distance(decelerate_wps, stop_idx)
+
+        for i, wp in enumerate(decelerate_wps):
+
+            # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
+            if i < stop_idx:
+                dist = self.wp_distance_vector[i]
+                vel = math.sqrt(2 * MAX_DECEL * dist)     
+            else:
+                vel = 0.
+
+            wp.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
+
+        return decelerate_wps
+
 
     def pose_cb(self, msg):
         # DONE: Implemented
@@ -176,7 +196,7 @@ class WaypointUpdater(object):
     def wp_distance(self, waypoints, stop_idx):
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
         dist = 0
-        distance_vector = []
+        distance_vector = [0]
         i = stop_idx 
         
         while i > 0 :
