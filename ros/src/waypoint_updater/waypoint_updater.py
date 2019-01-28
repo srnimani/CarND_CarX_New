@@ -26,7 +26,7 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 100 # Number of waypoints we will publish. You can change this number
 MAX_DECEL = 8 # in m/ sec ^2
 
 
@@ -98,7 +98,6 @@ class WaypointUpdater(object):
         closest_idx = self.get_closest_waypoint_idx()
         farthest_idx = closest_idx + LOOKAHEAD_WPS
         base_waypoints = self.base_lane.waypoints[closest_idx:farthest_idx]
-        #rospy.loginfo("Stopline_wp_idx %s", self.stopline_wp_idx)
         
         if self.stopline_wp_idx == -1 or (self.stopline_wp_idx >= farthest_idx):
             lane.waypoints = base_waypoints
@@ -108,41 +107,21 @@ class WaypointUpdater(object):
         return lane
 
 
-    def old_decelerate_waypoints(self, waypoints, closest_idx):
-        # make a copy of the waypoints.. need to adjust some velocities to 0
-        decelerate_wps = copy.deepcopy(waypoints) 
-        # Calculate the stop waypoint.. it's 5 points from the stopline to ensure that the car's nose is in
-        stop_idx = max(self.stopline_wp_idx - closest_idx - 5, 0)
-        self.wp_distance_vector = self.wp_distance(decelerate_wps, stop_idx)
-
-        for i, wp in enumerate(decelerate_wps):
-
-            # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
-            if i < stop_idx:
-                #dist = self.distance(decelerate_wps, i, stop_idx)
-                dist = self.wp_distance_vector[i]
-                vel = math.sqrt(2 * MAX_DECEL * dist)     
-                if vel <1.0:
-                    vel = 0.
-            else:
-                vel = 0.
-
-            wp.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
-
-        return decelerate_wps
-
     
     def decelerate_waypoints(self, waypoints, closest_idx):
         # make a copy of the waypoints.. need to adjust some velocities to 0
-        decelerate_wps = copy.deepcopy(waypoints) 
+        decelerate_wps = copy.deepcopy(waypoints)
+        
         # Calculate the stop waypoint.. it's 3 points from the stopline to ensure that the car's nose is in
-        stop_idx = max(self.stopline_wp_idx - closest_idx - 3, 0)
-        self.wp_distance_vector = self.wp_distance(decelerate_wps, stop_idx)
+        wps_to_stop = max(self.stopline_wp_idx - closest_idx - 0, 0)
+        rospy.loginfo("stop_line_index, closest_dx %s %s", self.stopline_wp_idx, closest_idx)
+
+        self.wp_distance_vector = self.wp_distance(decelerate_wps, wps_to_stop)
 
         for i, wp in enumerate(decelerate_wps):
 
             # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
-            if i < stop_idx:
+            if i < wps_to_stop:
                 dist = self.wp_distance_vector[i]
                 vel = math.sqrt(2 * MAX_DECEL * dist)     
             else:
@@ -193,12 +172,13 @@ class WaypointUpdater(object):
         return dist
 
 
-    def wp_distance(self, waypoints, stop_idx):
+    def wp_distance(self, waypoints, wps_to_stop):
+        
+        distance_vector = [0]
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
         dist = 0
-        distance_vector = [0]
-        i = stop_idx 
-        
+        i = wps_to_stop - 1
+
         while i > 0 :
             dist += dl(waypoints[i].pose.pose.position, waypoints[i-1].pose.pose.position)
             distance_vector.insert(0, dist)
