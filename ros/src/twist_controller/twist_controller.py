@@ -80,38 +80,10 @@ class Controller(object):
 
         elif vel_error < 0 and current_vel != 0. : # Need to decelerate
             deceleration = min(abs(acceleration), self.decel_limit)
-            brake = self.vehicle_mass * self.wheel_radius * deceleration * 2
+            brake = self.vehicle_mass * self.wheel_radius * deceleration * 20 # Does not still stop cleanly
             throttle = 0.0
 
-        """
 
-        if target_vel == 0. and vel_error < 0.1:
-        	throttle = 0.
-        	brake = 700 # N*m, to hold Carla @ light.
-
-
-        elif target_vel < 0.1 and vel_error < 0.:
-        	throttle = 0.
-        	decel = max(vel_error, self.decel_limit)
-        	brake = abs(decel)*self.vehicle_mass*self.wheel_radius # Torque N*m
-
-
-        # The following code is if the car needs to slowdown or stop
-
-        if vel_error < 0.: # Need to decelerate
-            deceleration = abs(acceleration) # Take the absolute value
-            jerkfree_deceleration = min(deceleration, self.decel_limit)
-            brake = jerkfree_deceleration * self.vehicle_mass * self.wheel_radius
-            #rospy.loginfo("Brake %s", brake)
-            throttle = 0.
-        elif target_vel == 0. and vel_error < 0.1:
-        	brake = 700 # Nm, minimum breakforce needed to hold Carla @ light.
-
-        	throttle = 0.
-
-        #rospy.loginfo("Brake %s", brake)
-
-        """
 
         #Record the time and velocities for next cycle
         self.last_vel = current_vel
