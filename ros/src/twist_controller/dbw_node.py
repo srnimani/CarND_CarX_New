@@ -38,7 +38,7 @@ class DBWNode(object):
         vehicle_mass = rospy.get_param('~vehicle_mass', 1736.35)
         fuel_capacity = rospy.get_param('~fuel_capacity', 13.5)
         brake_deadband = rospy.get_param('~brake_deadband', .1)
-        decel_limit = rospy.get_param('~decel_limit', -5)
+        decel_limit = rospy.get_param('~decel_limit', -10)
         accel_limit = rospy.get_param('~accel_limit', 1.)
         wheel_radius = rospy.get_param('~wheel_radius', 0.2413)
         wheel_base = rospy.get_param('~wheel_base', 2.8498)
@@ -64,7 +64,7 @@ class DBWNode(object):
         self.current_vel = None
         self.curr_ang_vel = None
         self.dbw_enabled = None
-        self.linear_vel = None
+        self.target_vel = None
         self.angular_vel = None
         self.throttle = self.steering = self.brake = 0
 
@@ -81,9 +81,9 @@ class DBWNode(object):
             #                                                     <current linear velocity>,
             #                                                     <dbw status>,
             #                                                     <any other argument you need>)
-            if not None in (self.current_vel, self.linear_vel, self.angular_vel):
-                self.throttle, self.brake, self.steering = self.controller.control(self.current_vel, \
-                    self.dbw_enabled, self.linear_vel, self.angular_vel)
+            if not None in (self.current_vel, self.target_vel, self.angular_vel):
+                self.throttle, self.brake, self.steering = self.controller.control(self.dbw_enabled, self.current_vel, \
+                     self.target_vel, self.angular_vel)
             if self.dbw_enabled:
                 self.publish(self.throttle, self.brake, self.steering)
             rate.sleep()
@@ -92,7 +92,7 @@ class DBWNode(object):
         self.dbw_enabled = msg
 
     def twist_cb(self, msg):
-        self.linear_vel = msg.twist.linear.x
+        self.target_vel = msg.twist.linear.x
         self.angular_vel = msg.twist.angular.z
 
     def velocity_cb(self, msg):
