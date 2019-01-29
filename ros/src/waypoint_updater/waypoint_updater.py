@@ -2,6 +2,7 @@
 
 import rospy
 from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import TwistStamped
 from styx_msgs.msg import Lane, Waypoint
 from std_msgs.msg import Int32
 from scipy.spatial import KDTree
@@ -26,8 +27,8 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 100 # Number of waypoints we will publish. You can change this number
-MAX_DECEL = 8 # in m/ sec ^2
+LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+MAX_DECEL = 10 # in m/ sec ^2
 
 
 class WaypointUpdater(object):
@@ -36,6 +37,7 @@ class WaypointUpdater(object):
 
         # DONE: Add other member variables you need below
         self.pose = None
+        self.current_vel = None
         self.base_lane = None
         self.stopline_wp_idx = -1
         self.waypoints_2d = None
@@ -47,6 +49,8 @@ class WaypointUpdater(object):
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
         rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
+        rospy.Subscriber('/current_velocity', TwistStamped, self.velocity_cb, queue_size=1)
+
 
         # Done: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
@@ -113,8 +117,11 @@ class WaypointUpdater(object):
         decelerate_wps = copy.deepcopy(waypoints)
         
         # Calculate the stop waypoint.. it's 3 points from the stopline to ensure that the car's nose is in
-        wps_to_stop = max(self.stopline_wp_idx - closest_idx - 0, 0)
+        wps_to_stop = max(self.stopline_wp_idx - closest_idx - 3, 1)
         rospy.loginfo("stop_line_index, closest_dx %s %s", self.stopline_wp_idx, closest_idx)
+
+        current_vel = self.current_vel
+        needed_decel = current_vel / wps_to_stop
 
         self.wp_distance_vector = self.wp_distance(decelerate_wps, wps_to_stop)
 
@@ -123,7 +130,9 @@ class WaypointUpdater(object):
             # Decelerate till stop_idx is reached. Beyond that index set all velocities to 0
             if i < wps_to_stop:
                 dist = self.wp_distance_vector[i]
-                vel = math.sqrt(2 * MAX_DECEL * dist)     
+                vel = math.sqrt(2 * MAX_DECEL * dist) 
+                if vel < 1.5 :
+                    vel = 0.
             else:
                 vel = 0.
 
@@ -135,6 +144,10 @@ class WaypointUpdater(object):
     def pose_cb(self, msg):
         # DONE: Implemented
         self.pose = msg 
+
+
+    def velocity_cb(self, msg):
+        self.current_vel = msg.twist.linear.x
 
 
     def waypoints_cb(self, waypoints):
