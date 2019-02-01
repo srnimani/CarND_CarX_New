@@ -27,6 +27,7 @@ class Controller(object):
         self.vehicle_mass = vehicle_mass
         self.fuel_capacity = fuel_capacity
         self.brake_deadband = brake_deadband
+        #self.decel_limit = decel_limit
         self.decel_limit = abs(decel_limit) # Lets use the absolute value to simplify feature equations
         self.accel_limit = accel_limit
         self.wheel_radius = wheel_radius
@@ -73,21 +74,30 @@ class Controller(object):
         # Further refinements can be done by adding the mass of fuel and the passengers to the mass
         # of the car in real world scenario
         #
+        # This is deceleration section, first decelerate to the max, and then ease off..
 
-        if target_vel == 0. and vel_error < 0.1: # This section is to hold the car @ Stop
-            throttle = 0.
-            brake = 700 # N*m, to hold Carla @ light.
+        """
 
-        elif vel_error < 0 and current_vel != 0. : # Need to decelerate
+        if vel_error < -10.: # Need to decelerate  
+            brake =  self.vehicle_mass * self.wheel_radius * self.decel_limit
+            throttle = 0. 
+            #rospy.loginfo("Loop 0: Brake : %4.2f", brake) """
+
+        if vel_error < 0. and current_vel > 0. :
             deceleration = min(abs(acceleration), self.decel_limit)
-            brake = self.vehicle_mass * self.wheel_radius * deceleration * 20 # Does not still stop cleanly
-            throttle = 0.0
-
-
+            brake = self.vehicle_mass * self.wheel_radius * self.decel_limit  # Does not still stop cleanly
+            #throttle = 0. 
+            rospy.loginfo("Loop 1: Current Velocity, Brake : %2.2f, %4.2f", current_vel, brake)
+        elif target_vel == 0. and current_vel == 0. : # This section is to hold the car @ Stop
+            brake = 700 # N*m, to hold Carla @ light.
+            throttle = 0. 
+            #rospy.loginfo("Loop 2: Brake : %4.2f", brake)
+                
 
         #Record the time and velocities for next cycle
         self.last_vel = current_vel
         self.last_time = current_time
+
 
         return throttle, brake, steering
 
